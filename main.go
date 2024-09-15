@@ -32,8 +32,8 @@ func main() {
 	}
 
 	type csvStruct struct {
-		start int
-		end   int
+		start string
+		end   string
 		id    string
 	}
 
@@ -54,8 +54,8 @@ func main() {
 	for csvRead.Scan() {
 		line := csvRead.Text()
 		csvLoad = append(csvLoad, csvStruct{
-			start: strconv.Atoi(strings.Split(string(line), ",")[0]),
-			end:   strconv.Atoi(strings.Split(string(line), ",")[1]),
+			start: strings.Split(string(line), ",")[0],
+			end:   strings.Split(string(line), ",")[1],
 			id:    strings.Split(string(string(line)), ",")[2],
 		})
 	}
@@ -87,7 +87,7 @@ func main() {
 				if fasID[i].id == csvLoad[j].id {
 					extractMAGSeq = append(
 						extractMAGSeq,
-						fasSeq[i].seq[csvLoad[j].start:csvLoad[j].end],
+						fasSeq[i].seq[strconv.Atoi(csvLoad[j].start):strconv.Atoi(csvLoad[j].end)],
 					)
 					extractMAGID = append(extractMAGID, fasID[i].id)
 				}
