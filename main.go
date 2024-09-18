@@ -26,76 +26,80 @@ for the MAGs.
 func main() {
 	takecsv := flag.String("csvfile", "path to the csv file", "file")
 	fastafile := flag.String("fastafile", "path to the fasta file", "file")
+
 	flag.Parse()
+
 	if len(*takecsv) == 0 || len(*fastafile) == 0 {
 		fmt.Println("path to the csv and the fasta file needs to be there and defined")
 	}
 
-	type csvStruct struct {
-		start string
-		end   string
-		id    string
-	}
-
-	type fastaID struct {
+	type alignmentID struct {
 		id string
 	}
 
-	type fastaSeq struct {
+	type alignmentSeq struct {
 		seq string
 	}
 
+	type magStruct struct {
+		start int
+		end   int
+		id    string
+	}
+
+	fOpen, err := os.Open(*fastafile)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fRead := bufio.NewScanner(fOpen)
+	alignmentIDStore := []alignmentID{}
+	alignmentSeqStore := []alignmentSeq{}
+	for fRead.Scan() {
+		line := fRead.Text()
+		if strings.HasPrefix(string(line), ">") {
+			alignmentIDStore = append(alignmentIDStore, alignmentID{
+				id: strings.Replace(string(line), ">", "", -1),
+			})
+		}
+		if !strings.HasPrefix(string(line), ">") {
+			alignmentSeqStore = append(alignmentSeqStore, alignmentSeq{
+				seq: string(line),
+			})
+		}
+	}
 	csvOpen, err := os.Open(*takecsv)
 	if err != nil {
 		log.Fatal(err)
 	}
 	csvRead := bufio.NewScanner(csvOpen)
-	csvLoad := []csvStruct{}
+	magStore := []magStruct{}
 	for csvRead.Scan() {
 		line := csvRead.Text()
-		csvLoad = append(csvLoad, csvStruct{
-			start: strings.Split(string(line), ",")[0],
-			end:   strings.Split(string(line), ",")[1],
-			id:    strings.Split(string(string(line)), ",")[2],
+		firstline, _ := strconv.Atoi(strings.Split(string(line), ",")[0])
+		secondline, _ := strconv.Atoi(strings.Split(string(line), ",")[1])
+		magStore = append(magStore, magStruct{
+			start: firstline,
+			end:   secondline,
+			id:    strings.Split(string(line), ",")[2],
 		})
 	}
 
-	openFasta, err := os.Open(*fastafile)
-	if err != nil {
-		log.Fatal(err)
-	}
-	takeFasta := bufio.NewScanner(openFasta)
-	fasID := []fastaID{}
-	fasSeq := []fastaSeq{}
-	extractMAGSeq := []string{}
-	extractMAGID := []string{}
-	for takeFasta.Scan() {
-		line := takeFasta.Text()
-		if strings.HasPrefix(string(line), ">") {
-			fasID = append(fasID, fastaID{
-				id: string(line),
-			})
-		}
-		if !strings.HasPrefix(string(line), ">") {
-			fasSeq = append(fasSeq, fastaSeq{
-				seq: string(line),
-			})
-		}
+	magExtractID := []string{}
+	magExtractSeq := []string{}
 
-		for i := range fasID {
-			for j := range csvLoad {
-				if fasID[i].id == csvLoad[j].id {
-					extractMAGSeq = append(
-						extractMAGSeq,
-						fasSeq[i].seq[strconv.Atoi(csvLoad[j].start):strconv.Atoi(csvLoad[j].end)],
-					)
-					extractMAGID = append(extractMAGID, fasID[i].id)
-				}
+	for i := range alignmentIDStore {
+		for j := range magStore {
+			if alignmentIDStore[i].id == magStore[j].id {
+				magExtractID = append(magExtractID, alignmentIDStore[i].id)
+				magExtractSeq = append(
+					magExtractSeq,
+					alignmentSeqStore[i].seq[magStore[j].start:magStore[j].end],
+				)
 			}
 		}
 	}
 
-	for i := range extractMAGSeq {
-		fmt.Println(">", extractMAGID[i], "\n", extractMAGSeq[i])
+	for i := range magExtractID {
+		fmt.Println(">", magExtractID[i], "\n", magExtractSeq[i])
 	}
 }
